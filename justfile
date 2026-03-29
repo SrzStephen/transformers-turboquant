@@ -22,6 +22,9 @@ test-fast:
 test-slow:
     uv run pytest -m slow -s
 
+validate:
+    uv run transformers-turboquant validate
+
 pre-commit:
     uv run pre-commit run --all-files
 

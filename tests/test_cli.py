@@ -8,6 +8,6 @@ runner = CliRunner()
 
 
 def test_main_command() -> None:
-    result = runner.invoke(app)
+    result = runner.invoke(app, ["validate", "--help"])
     assert result.exit_code == 0
-    assert "Hello from transformers-turboquant!" in result.output
+    assert "Run needle-in-haystack validation" in result.output
