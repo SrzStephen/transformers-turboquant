@@ -17,12 +17,16 @@ MODEL_NAME = "Qwen/Qwen2.5-3B-Instruct"
 NEEDLE = "The secret project code name is AURORA-7749."
 QUESTION = "What is the secret project code name?"
 
-FILLER = """The quarterly financial review meeting covered several topics including
-budget allocations for the upcoming fiscal year, departmental spending reports, and projected
-revenue streams from various business units. The committee discussed infrastructure upgrades
-planned for the western regional offices and noted that maintenance schedules should be
-coordinated with the facilities management team. Several action items were assigned to team
-leads for follow-up before the next meeting cycle.\n\n"""
+FILLER = (
+    "The quarterly financial review meeting covered several topics including\n"
+    "budget allocations for the upcoming fiscal year, departmental spending\n"
+    "reports, and projected revenue streams from various business units.\n"
+    "The committee discussed infrastructure upgrades planned for the western\n"
+    "regional offices and noted that maintenance schedules should be\n"
+    "coordinated with the facilities management team. Several action items\n"
+    "were assigned to team leads for follow-up before the next meeting\n"
+    "cycle.\n\n"
+)
 
 
 def build_prompt(tokenizer, target_tokens=2048, needle_pos=0.5):
@@ -35,7 +39,10 @@ def build_prompt(tokenizer, target_tokens=2048, needle_pos=0.5):
             parts.append(f"\n--- Memo ---\n{NEEDLE}\n--- End ---\n\n")
         parts.append(FILLER)
     haystack = "".join(parts)
-    return f"<|im_start|>user\n{haystack}\nQuestion: {QUESTION}<|im_end|>\n<|im_start|>assistant\n"
+    return (
+        f"<|im_start|>user\n{haystack}\nQuestion: {QUESTION}"
+        f"<|im_end|>\n<|im_start|>assistant\n"
+    )
 
 
 def main():
@@ -43,15 +50,25 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
     model = AutoModelForCausalLM.from_pretrained(
         MODEL_NAME,
-        quantization_config=BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16, bnb_4bit_quant_type="nf4"),
-        device_map="auto", dtype=torch.float16,
+        quantization_config=BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_compute_dtype=torch.float16,
+            bnb_4bit_quant_type="nf4",
+        ),
+        device_map="auto",
+        dtype=torch.float16,
     )
     model.eval()
     print(f"Loaded. GPU: {torch.cuda.memory_allocated() // 1024 // 1024} MB\n")
 
     for target_tokens in [2048, 4096, 8192]:
         prompt = build_prompt(tokenizer, target_tokens)
-        inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=target_tokens + 256).to("cuda")
+        inputs = tokenizer(
+            prompt,
+            return_tensors="pt",
+            truncation=True,
+            max_length=target_tokens + 256,
+        ).to("cuda")
         seq_len = inputs["input_ids"].shape[1]
 
         # Find needle token positions - search for a distinctive substring
@@ -84,12 +101,9 @@ def main():
         cache = outputs.past_key_values
 
         n_layers = len(cache.layers)
-        head_dim = cache.layers[0].keys.shape[-1]
-        num_kv_heads = cache.layers[0].keys.shape[1]
 
         # Query = last token's Q projection (simulates next-token generation)
         # We'll recompute Q from the last hidden state
-        last_hidden = outputs.logits  # we don't actually need this
         # Instead, just use the cached keys as queries too (self-attention validation)
         # Pick the LAST token's perspective: its query attending to all keys
 
@@ -103,20 +117,26 @@ def main():
             n_checks = 0
 
             for layer_idx in range(n_layers):
-                keys = cache.layers[layer_idx].keys      # (1, num_kv_heads, seq, head_dim)
+                # (1, num_kv_heads, seq, head_dim)
+                keys = cache.layers[layer_idx].keys
                 values = cache.layers[layer_idx].values
 
                 B, H, S, D = keys.shape
 
                 # Compress keys
-                key_comp = TurboQuantCompressorV2(D, bits, seed=layer_idx * 1000, device="cuda")
-                val_comp = TurboQuantCompressorMSE(D, bits, seed=layer_idx * 1000 + 500, device="cuda")
+                key_comp = TurboQuantCompressorV2(
+                    D, bits, seed=layer_idx * 1000, device="cuda"
+                )
+                val_comp = TurboQuantCompressorMSE(
+                    D, bits, seed=layer_idx * 1000 + 500, device="cuda"
+                )
 
                 compressed_k = key_comp.compress(keys)
-                compressed_v = val_comp.compress(values)
+                val_comp.compress(values)
 
                 # Memory accounting - what TurboQuant actually stores:
-                # Keys: indices (uint8) + qjl_signs (1 bit packed) + residual_norm (fp16) + vec_norms (fp16)
+                # Keys: indices (uint8) + qjl_signs (1 bit packed) + residual_norm
+                # (fp16) + vec_norms (fp16)
                 n_key_vecs = B * H * S
                 mse_bits = max(bits - 1, 1)
                 k_bits = n_key_vecs * D * mse_bits  # MSE indices
@@ -136,10 +156,14 @@ def main():
                 query = keys[:, :, -1:, :]  # (1, H, 1, D) - last token
 
                 # Real scores
-                real_scores = torch.matmul(query.float(), keys.float().transpose(-2, -1)).squeeze(-2)  # (1, H, S)
+                real_scores = torch.matmul(
+                    query.float(), keys.float().transpose(-2, -1)
+                ).squeeze(-2)  # (1, H, S)
 
                 # TurboQuant scores
-                tq_scores = key_comp.asymmetric_attention_scores(query, compressed_k).squeeze(-2)  # (1, H, S)
+                tq_scores = key_comp.asymmetric_attention_scores(
+                    query, compressed_k
+                ).squeeze(-2)  # (1, H, S)
 
                 # Per-head comparison
                 for h in range(H):
@@ -163,7 +187,9 @@ def main():
 
                     # Where does the needle rank?
                     if needle_start is not None:
-                        needle_rank = (ts.argsort(descending=True) == needle_start).nonzero()
+                        needle_rank = (
+                            (ts.argsort(descending=True) == needle_start).nonzero()
+                        )
                         if len(needle_rank) > 0:
                             needle_rank_sum += needle_rank[0].item()
 
@@ -177,12 +203,26 @@ def main():
             avg_needle_rank = needle_rank_sum / n_checks if needle_start else -1
 
             print(f"\n  TQ-{bits}bit:")
-            print(f"    Compression:       {ratio:.1f}x  ({total_compressed_bytes / 1024 / 1024:.1f} MB vs {total_uncompressed_bytes / 1024 / 1024:.1f} MB)")
+            comp_mb = total_compressed_bytes / 1024 / 1024
+            uncomp_mb = total_uncompressed_bytes / 1024 / 1024
+            print(
+                f"    Compression:       {ratio:.1f}x  "
+                f"({comp_mb:.1f} MB vs {uncomp_mb:.1f} MB)"
+            )
             print(f"    Score cosine sim:  {avg_cos:.6f}  (1.0 = perfect)")
-            print(f"    Top-1 match:       {top1_pct:.1f}%  ({top1_matches}/{n_checks} heads)")
-            print(f"    Top-5 match:       {top5_pct:.1f}%  ({top5_matches}/{n_checks} heads)")
+            print(
+                f"    Top-1 match:       {top1_pct:.1f}%  "
+                f"({top1_matches}/{n_checks} heads)"
+            )
+            print(
+                f"    Top-5 match:       {top5_pct:.1f}%  "
+                f"({top5_matches}/{n_checks} heads)"
+            )
             if needle_start is not None:
-                print(f"    Avg needle rank:   {avg_needle_rank:.1f}  (lower = better, 0 = top)")
+                print(
+                    f"    Avg needle rank:   {avg_needle_rank:.1f}  "
+                    f"(lower = better, 0 = top)"
+                )
 
         print()
 
