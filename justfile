@@ -17,7 +17,7 @@ test:
     uv run pytest
 
 test-fast:
-    uv run pytest -n auto --no-cov
+    uv run pytest --no-cov
 
 test-slow:
     uv run pytest -m slow -s

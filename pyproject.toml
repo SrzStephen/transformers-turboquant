@@ -34,7 +34,6 @@ dev = [
     "pytest-cov",
     "pytest-mock",
     "pytest-asyncio",
-    "pytest-xdist",
     "ruff",
     "ty",
 ]
@@ -44,7 +43,7 @@ package = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-n auto --cov=transformers_turboquant --cov-report=term-missing --cov-report=xml -m \"not slow\""
+addopts = "--cov=transformers_turboquant --cov-report=term-missing --cov-report=xml -m \"not slow\""
 asyncio_mode = "auto"
 markers = ["slow: marks tests as slow (deselect with '-m \"not slow\"')"]
 

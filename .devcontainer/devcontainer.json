@@ -56,6 +56,9 @@
         "[python]": {
           "editor.defaultFormatter": "charliermarsh.ruff"
         },
+        "[just]": {
+          "editor.formatOnSave": false
+        },
         "python.defaultInterpreterPath": "${containerWorkspaceFolder}/.venv/bin/python",
         "python.languageServer": "Pylance",
         "ty.disableLanguageServices": true,
