@@ -2,6 +2,10 @@
 requires = ["uv_build>=0.10.0,<0.11.0"]
 build-backend = "uv_build"
 
+[tool.uv.build-backend]
+module-name = ["transformers_turboquant", "turboquant_pytorch"]
+module-root = "src"
+
 [project]
 name = "transformers-turboquant"
 version = "0.1.0"
@@ -22,6 +26,7 @@ dependencies = [
 
 [project.scripts]
 transformers-turboquant = "transformers_turboquant.cli:app"
+validate = "turboquant_pytorch.validate:main"
 
 [dependency-groups]
 dev = [
