@@ -12,7 +12,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from turboquant import TurboQuantMSE, TurboQuantProd, TurboQuantKVCache, LloydMaxCodebook
+from turboquant_pytorch import TurboQuantMSE, TurboQuantProd, TurboQuantKVCache, LloydMaxCodebook
 
 
 def test_lloyd_max_codebook():
