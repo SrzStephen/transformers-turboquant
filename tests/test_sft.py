@@ -2,6 +2,8 @@
 
 import copy
 
+import pytest
+import torch
 from datasets import Dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from trl import SFTConfig, SFTTrainer
@@ -11,6 +13,7 @@ from transformers_turboquant import apply_turboquant
 MODEL_ID = "sshleifer/tiny-gpt2"
 
 
+@pytest.mark.skipif(not torch.cuda.is_available(), "cant run without a GPU (bfloat16)")
 def test_sft_single_step_completes():
     tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
     if tokenizer.pad_token is None:
