@@ -49,6 +49,20 @@ class TurboQuantGPT2Attention(TurboQuantAttentionBase):
         obj.val_compressor = val_compressor
         return obj
 
+    def _apply(self, fn, recurse=True):
+        """Propagate device/dtype moves to compressor tensors."""
+        super()._apply(fn, recurse=recurse)
+        for comp in (self.key_compressor, self.val_compressor):
+            for attr in ("Pi", "PiT", "S", "centroids", "boundaries"):
+                tensor = getattr(comp, attr, None)
+                if tensor is not None:
+                    setattr(comp, attr, fn(tensor))
+            # Update the device string the compressor uses internally
+            device = getattr(comp, "Pi", None)
+            if device is not None:
+                comp.device = str(comp.Pi.device)
+        return self
+
     def forward(
         self,
         hidden_states,
