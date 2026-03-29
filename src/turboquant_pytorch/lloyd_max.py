@@ -107,25 +107,65 @@ def compute_expected_distortion(d: int, bits: int, centroids: torch.Tensor, boun
 class LloydMaxCodebook:
     """Precomputed Lloyd-Max codebook for a given dimension and bit-width."""
 
-    def __init__(self, d: int, bits: int, use_exact: bool = False):
+    def __init__(self, d: int, bits: int, use_exact: bool = False, use_triton: bool = True):
         self.d = d
         self.bits = bits
         self.n_levels = 2 ** bits
+        self.use_triton = use_triton
         self.centroids, self.boundaries = solve_lloyd_max(d, bits, use_exact)
         self.distortion = compute_expected_distortion(d, bits, self.centroids, self.boundaries, use_exact)
 
+    def _triton_ready(self) -> bool:
+        """Check if Triton kernels can be used."""
+        if not self.use_triton:
+            return False
+        if not torch.cuda.is_available():
+            return False
+        # Use the module-level availability flag set at import time — this avoids
+        # a repeated import probe on every quantize/dequantize call and correctly
+        # reflects the driver-level check performed when kernels.quantize was loaded.
+        try:
+            from .kernels.quantize import _TRITON_AVAILABLE  # noqa: F401
+            return _TRITON_AVAILABLE
+        except ImportError:
+            return False
+
     def quantize(self, x: torch.Tensor) -> torch.Tensor:
-        """Quantize values to nearest centroid indices."""
-        # x: (...,) -> indices: (...,) as uint8/int16
+        """Quantize values to nearest centroid indices.
+
+        Returns:
+            If Triton path is active (use_triton=True and input on CUDA):
+                packed uint8 tensor of shape (...batch..., ceil(d * bits / 8))
+            Otherwise:
+                integer index tensor of shape (...,)
+        """
+        if self._triton_ready() and x.is_cuda:
+            from .kernels.quantize import lloyd_max_quantize
+            # Reshape to 2D [N, d] for the Triton kernel
+            x2d = x.reshape(-1, self.d)
+            packed = lloyd_max_quantize(x2d, self.boundaries.to(x.device), self.bits)
+            return packed
+
+        # PyTorch fallback: return raw argmin indices
         diffs = (x.unsqueeze(-1) - self.centroids.to(x.device))  # (..., n_levels)
         return diffs.abs().argmin(dim=-1)
 
     def dequantize(self, indices: torch.Tensor) -> torch.Tensor:
-        """Map indices back to centroid values."""
+        """Map indices (or packed uint8) back to centroid values.
+
+        Args:
+            indices: packed uint8 tensor (Triton path) or integer index tensor (PyTorch path)
+        """
+        if self._triton_ready() and indices.is_cuda:
+            from .kernels.quantize import lloyd_max_dequantize
+            return lloyd_max_dequantize(indices, self.centroids.half().to(indices.device), self.bits, self.d)
+
+        # PyTorch fallback: centroid lookup via integer indices
         return self.centroids.to(indices.device)[indices]
 
     def __repr__(self):
         return (
             f"LloydMaxCodebook(d={self.d}, bits={self.bits}, "
-            f"levels={self.n_levels}, distortion_per_coord={self.distortion:.6f})"
+            f"levels={self.n_levels}, distortion_per_coord={self.distortion:.6f}, "
+            f"use_triton={self.use_triton})"
         )

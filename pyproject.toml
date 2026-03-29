@@ -1,0 +1,60 @@
+[build-system]
+requires = ["uv_build>=0.10.0,<0.11.0"]
+build-backend = "uv_build"
+
+[project]
+name = "transformers-turboquant"
+version = "0.1.0"
+description = ""
+authors = [{ name = "", email = "" }]
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "accelerate>=1.13.0",
+    "bitsandbytes>=0.49.2",
+    "scipy>=1.17.1",
+    "torch>=2.11.0",
+    "transformers>=5.4.0",
+    "triton>=3.0.0",
+    "trl>=0.29.1",
+    "typer>=0.12",
+]
+
+[project.scripts]
+transformers-turboquant = "transformers_turboquant.cli:app"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-cov",
+    "pytest-mock",
+    "pytest-asyncio",
+    "pytest-xdist",
+    "ruff",
+    "ty",
+]
+
+[tool.uv]
+package = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-n auto --cov=transformers_turboquant --cov-report=term-missing --cov-report=xml -m \"not slow\""
+asyncio_mode = "auto"
+markers = ["slow: marks tests as slow (deselect with '-m \"not slow\"')"]
+
+[tool.coverage.run]
+branch = true
+source = ["transformers_turboquant"]
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]

@@ -1,0 +1,79 @@
+{
+  "name": "Python Dev",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "postStartCommand": "bash .devcontainer/post-start.sh",
+  "features": {
+    "ghcr.io/devcontainers/features/terraform:1": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:2": { "moby": false },
+    "ghcr.io/devcontainer-community/devcontainer-features/astral.sh-uv:1": {
+      "shellautocompletion": true
+    },
+    "ghcr.io/devcontainer-community/devcontainer-features/aws-cli:1": {},
+    "ghcr.io/devcontainer-community/devcontainer-features/github.com-cli:1": {},
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/common-utils": {
+      "installZsh": true,
+      "installOhMyZsh": true,
+      "installOhMyZshConfig": true,
+      "configureZshAsDefaultShell": true,
+      "zshDefaultTheme": "robbyrussell"
+    },
+    "ghcr.io/pirpedro/features/just:1": {},
+
+    "ghcr.io/devcontainers/features/nvidia-cuda:3": {
+      "installCudnn": true,
+      "cudaVersion": "13.1"
+    }
+  },
+
+  "hostRequirements": {
+    "gpu": "optional"
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "anthropic.claude-code",
+        "ms-python.python",
+        "charliermarsh.ruff",
+        "ms-python.vscode-pylance",
+        "ms-python.debugpy",
+        "ms-toolsai.jupyter",
+        "tamasfe.even-better-toml",
+        "MermaidChart.vscode-mermaid-chart",
+        "esbenp.prettier-vscode",
+        "github.vscode-github-actions",
+        "astral-sh.ty",
+        "google.colab"
+      ],
+      "settings": {
+        "github.copilot.enable": {
+          "*": false
+        },
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true,
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff"
+        },
+        "python.defaultInterpreterPath": "${containerWorkspaceFolder}/.venv/bin/python",
+        "python.languageServer": "Pylance",
+        "ty.disableLanguageServices": true,
+        "chat.disableAIFeatures": true,
+        "python.testing.pytestArgs": ["tests"],
+        "python.testing.unittestEnabled": false,
+        "python.testing.pytestEnabled": true,
+        "terminal.integrated.defaultProfile.linux": "zsh"
+      }
+    }
+  },
+  "remoteEnv": {
+    "VIRTUAL_ENV": "${containerWorkspaceFolder}/.venv",
+    "PATH": "${containerWorkspaceFolder}/.venv/bin:${containerEnv:PATH}"
+  },
+  "mounts": [
+    "source=${localEnv:HOME}/.claude,target=/home/vscode/.claude,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.cache/uv,target=/home/vscode/.cache/uv,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.cache/huggingface,target=/home/vscode/.cache/huggingface,type=bind,consistency=cached"
+  ]
+}
