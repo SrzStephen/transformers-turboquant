@@ -11,7 +11,8 @@ class UnsupportedModelError(ValueError):
 
 def register_family(*model_types: str):
     """
-    Class decorator that registers an attention class for one or more model_type strings.
+    Class decorator that registers an attention class for one or more
+    model_type strings.
 
     Usage:
         @register_family("llama", "mistral")

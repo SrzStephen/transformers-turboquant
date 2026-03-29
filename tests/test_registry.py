@@ -1,10 +1,11 @@
 import pytest
+
+from transformers_turboquant.base import TurboQuantAttentionBase
 from transformers_turboquant.registry import (
     UnsupportedModelError,
     get_attention_class,
     register_family,
 )
-from transformers_turboquant.base import TurboQuantAttentionBase
 
 
 def test_register_and_dispatch_single_type():

@@ -5,7 +5,10 @@ from typing import ClassVar
 
 import torch.nn as nn
 
-from turboquant_pytorch.compressors import TurboQuantCompressorMSE, TurboQuantCompressorV2
+from turboquant_pytorch.compressors import (
+    TurboQuantCompressorMSE,
+    TurboQuantCompressorV2,
+)
 
 
 class TurboQuantAttentionBase(ABC, nn.Module):
