@@ -22,6 +22,11 @@ Attention scores are computed **directly from the compressed representation** us
 | DeepSeek        | `deepseek`          |
 | GPT-2           | `gpt2`              |
 
+## Compatibility
+
+- **Inference:** Transformers [`pipeline`](https://huggingface.co/docs/transformers/main_classes/pipelines) and [`AutoModelForCausalLM`](https://huggingface.co/docs/transformers/model_doc/auto#transformers.AutoModelForCausalLM) — call `apply_turboquant` after loading the model.
+- **SFT fine-tuning:** Compatible with [TRL](https://huggingface.co/docs/trl/main/en/index) (e.g. `SFTTrainer`) — apply TurboQuant after loading the base model before passing it to the trainer.
+
 ## Usage
 
 ### Python API
