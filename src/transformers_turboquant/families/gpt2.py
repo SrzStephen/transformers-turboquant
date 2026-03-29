@@ -101,7 +101,5 @@ class TurboQuantGPT2Attention(TurboQuantAttentionBase):
         attn_output = self.c_proj(attn_output)
         attn_output = self.resid_dropout(attn_output)
 
-        outputs = (attn_output,)
-        if output_attentions:
-            outputs = outputs + (weights,)
-        return outputs
+        attn_weights = weights if output_attentions else None
+        return attn_output, attn_weights
